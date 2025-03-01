@@ -4,6 +4,7 @@
 
 import static java.lang.System.*;
 
+import java.io.File;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
@@ -46,7 +47,9 @@ public class xtf2duckdb {
                     Element element = (Element) node;
                     //System.out.println(element.getTextContent().trim());
 
-                    if (element.getTextContent().trim().contains("abbaustelle")) 
+                    if (element.getTextContent().trim().contains("abbaustelle")
+                        || element.getTextContent().trim().contains("seltene_baumarten") 
+                        || element.getTextContent().trim().contains("karst")) 
                         ids.add(element.getTextContent().trim());
                 }
             }
@@ -60,6 +63,8 @@ public class xtf2duckdb {
             settings.setXtffile("ilidata:"+id);
 
             String dbFileName = "/Users/stefan/tmp/duckdb/" + id + ".duckdb";
+            new File(dbFileName).delete();
+
             settings.setDbfile(dbFileName);
             settings.setDburl("jdbc:duckdb:" + settings.getDbfile());
             
@@ -89,7 +94,8 @@ public class xtf2duckdb {
         settings.setJsonTrafo(settings.JSON_TRAFO_COALESCE);
         settings.setCreateMetaInfo(true);
         settings.setModeldir("https://geo.so.ch/models;https://data.geo.so.ch");
-
+        settings.setValidation(false);
+        settings.setCreateFkIdx(settings.CREATE_FKIDX_YES);
         
         return settings;
     }    
