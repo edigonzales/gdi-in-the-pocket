@@ -7,6 +7,11 @@ import static java.lang.System.*;
 import java.io.File;
 import java.io.InputStream;
 import java.net.URL;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -59,26 +64,63 @@ public class xtf2duckdb {
 
         Config settings = createConfig();
 
+        List<String> ddbs = new ArrayList<>();
         for (var id : ids) {
             settings.setXtffile("ilidata:"+id);
 
             String dbFileName = "/Users/stefan/tmp/duckdb/" + id + ".duckdb";
-            new File(dbFileName).delete();
+            //new File(dbFileName).delete();
 
             settings.setDbfile(dbFileName);
             settings.setDburl("jdbc:duckdb:" + settings.getDbfile());
             
-            try {
-                Ili2db.run(settings, null);
-            } catch (Ili2dbException e) {
-                e.printStackTrace();
+            // try {
+            //     Ili2db.run(settings, null);
+                ddbs.add(dbFileName);
+            // } catch (Ili2dbException e) {
+            //     e.printStackTrace();
+            // }
+        }
+
+        for (var ddb : ddbs) {
+            out.println(getSchemaName(ddb));
+            String url = "jdbc:duckdb:" + new File(ddb).getAbsolutePath();
+            out.println(url);
+            try (Connection con = DriverManager.getConnection(url); Statement stmt = con.createStatement()) {
+
+                stmt.execute("INSTALL spatial");
+                stmt.execute("LOAD spatial");
+
+                try (ResultSet rs = stmt.executeQuery("SELECT * FROM information_schema.tables")) { 
+                    //out.println(rs.getString(1));
+                    while(rs.next()) {
+                        String tableCatalog = rs.getString("table_catalog");
+                        String tableName = rs.getString("table_name");
+                        if (tableName.contains("T_ILI2DB") || tableName.contains("multisurface") || tableName.contains("surfacestructure")) {
+                            continue;
+                        }
+                        out.println(rs.getString("table_name"));
+
+
+
+                    }
+                }
+            
+            
+            } catch (SQLException e) {
+                throw new IllegalStateException(e);
             }
         }
 
+    }
 
-
-
-
+    private static String getSchemaName(String input) {
+        // Remove the prefix before the third dot
+        String[] parts = input.split("\\.");
+        if (parts.length < 4) {
+            throw new IllegalArgumentException("Input string format is incorrect");
+        }
+        return parts[2] + "_" + parts[3];
     }
 
     private static Config createConfig() {
